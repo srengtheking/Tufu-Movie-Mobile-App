@@ -1,71 +1,85 @@
 import 'package:flutter/material.dart';
 
-import '../widgets/video_player_widget.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../widgets/app_buttons.dart';
+import '../../movies/data/sample_movies.dart';
+import '../widgets/video_player_widget.dart';
 
 class PlayerScreen extends StatelessWidget {
-  final String episodeId;
-  final String title;
-  final String videoUrl;
+  final String movieId;
 
-  const PlayerScreen({
-    super.key,
-    required this.episodeId,
-    required this.title,
-    required this.videoUrl,
-  });
+  const PlayerScreen({super.key, required this.movieId});
+
+  void _soon(BuildContext context, String what) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('$what is coming soon.')));
+  }
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+    final movie = SampleMovies.byId(movieId);
+
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: ListView(
-        children: [
-          VideoPlayerWidget(videoUrl: videoUrl),
-
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  'Episode ID: $episodeId',
-                  style: const TextStyle(color: AppColors.grey),
-                ),
-
-                const SizedBox(height: 25),
-
-                const Text(
-                  'More Episodes',
-                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
-                ),
-
-                const SizedBox(height: 15),
-
-                ...List.generate(
-                  5,
-                  (index) => ListTile(
-                    leading: const Icon(Icons.play_circle_outline),
-                    title: Text('Episode ${index + 1}'),
-                    subtitle: const Text('Watch episode'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {},
-                  ),
-                ),
-              ],
+      body: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(8, 4, 8, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: AppBackButton(),
+              ),
             ),
-          ),
-        ],
+            VideoPlayerWidget(videoUrl: movie.videoUrl),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    movie.title,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    movie.description,
+                    style: TextStyle(
+                      color: p.textSecondary,
+                      fontSize: 14,
+                      height: 1.55,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      for (final (i, label) in const [
+                        'My List',
+                        'Download',
+                        'Share',
+                      ].indexed) ...[
+                        if (i > 0) const SizedBox(width: 10),
+                        Expanded(
+                          child: SecondaryButton(
+                            label: label,
+                            height: 46,
+                            fontSize: 14,
+                            background: p.card,
+                            onPressed: () => _soon(context, label),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

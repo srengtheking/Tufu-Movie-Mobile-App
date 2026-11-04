@@ -1,181 +1,196 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../shared/widgets/movie_card.dart';
-import '../../shared/widgets/section_title.dart';
+import '../../widgets/app_buttons.dart';
+import '../../widgets/app_logo.dart';
+import '../../widgets/movie_card.dart';
+import '../../widgets/pill_chip.dart';
+import '../../widgets/section_title.dart';
+import '../movies/data/movie.dart';
+import '../movies/data/sample_movies.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  static const movies = [
-    {
-      'id': '1',
-      'title': 'The Dark Knight',
-      'year': '2008',
-      'rating': '9.0',
-      'image':
-          'https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg',
-    },
-    {
-      'id': '2',
-      'title': 'Inception',
-      'year': '2010',
-      'rating': '8.8',
-      'image':
-          'https://image.tmdb.org/t/p/w500/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg',
-    },
-    {
-      'id': '3',
-      'title': 'Interstellar',
-      'year': '2014',
-      'rating': '8.7',
-      'image':
-          'https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',
-    },
-  ];
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  static const _filters = ['All', 'Movies', 'Series', 'Genres'];
+  int _filter = 0;
+
+  void _onFilter(int i) {
+    if (i == 1) {
+      context.push('/movies');
+      return;
+    }
+    setState(() => _filter = i);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
+        bottom: false,
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(20, 16, 8, 16),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.movie_filter,
-                      color: AppColors.primary,
-                      size: 32,
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'TUFU',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                      ),
-                    ),
+                    const AppLogo(height: 22),
                     const Spacer(),
                     IconButton(
-                      onPressed: () {},
-                      icon: const Icon(Icons.notifications_outlined),
+                      tooltip: 'Search',
+                      onPressed: () => context.go('/search'),
+                      icon: const Icon(Icons.search_rounded, size: 28),
                     ),
                   ],
                 ),
               ),
             ),
-
-            SliverToBoxAdapter(child: _featuredBanner(context)),
-
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: SectionTitle(title: 'Trending Movies'),
+              child: PillChipRow(
+                labels: _filters,
+                selected: _filter,
+                onSelected: _onFilter,
               ),
             ),
-
-            SliverToBoxAdapter(child: _movieList()),
-
+            const SliverToBoxAdapter(child: SizedBox(height: 16)),
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: SectionTitle(title: 'Latest Movies'),
+              child: _FeaturedBanner(movie: SampleMovies.featured),
+            ),
+            const SliverToBoxAdapter(
+              child: SectionTitle(title: 'Trending now'),
+            ),
+            SliverToBoxAdapter(
+              child: MovieRail(
+                movies: SampleMovies.trending,
+                itemWidth: 120,
+                height: 180,
               ),
             ),
-
-            SliverToBoxAdapter(child: _movieList()),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 20)),
+            const SliverToBoxAdapter(
+              child: SectionTitle(title: 'New releases'),
+            ),
+            SliverToBoxAdapter(
+              child: MovieRail(
+                movies: SampleMovies.newReleases,
+                itemWidth: 120,
+                height: 180,
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 28)),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _featuredBanner(BuildContext context) {
-    return Container(
-      height: 390,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        image: const DecorationImage(
-          image: NetworkImage(
-            'https://image.tmdb.org/t/p/w780/8b8R8l88Qje9dn9OE8PY05Nxl1X.jpg',
-          ),
-          fit: BoxFit.cover,
-        ),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.transparent, Colors.black87],
-          ),
-        ),
-        padding: const EdgeInsets.all(20),
-        alignment: Alignment.bottomLeft,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'FEATURED MOVIE',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.bold,
+class _FeaturedBanner extends StatelessWidget {
+  final Movie movie;
+
+  const _FeaturedBanner({required this.movie});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: AspectRatio(
+        aspectRatio: 0.74,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Material(
+            color: p.surface,
+            child: InkWell(
+              onTap: () => context.push('/movie/${movie.id}'),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CachedNetworkImage(
+                    imageUrl: movie.posterUrl,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) => const SizedBox.shrink(),
+                  ),
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: [0.35, 1],
+                        colors: [Colors.transparent, Color(0xE6000000)],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 20,
+                    right: 20,
+                    bottom: 20,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          movie.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            height: 1.15,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '${movie.year}  ·  ${movie.genre}  ·  ${movie.duration}',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            PrimaryButton(
+                              label: 'Play',
+                              expand: false,
+                              height: 46,
+                              onPressed: () =>
+                                  context.push('/movie/${movie.id}'),
+                            ),
+                            SecondaryButton(
+                              label: 'My List',
+                              expand: false,
+                              height: 46,
+                              background: const Color(0xCC2A2A2A),
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '${movie.title} added to My List',
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Interstellar',
-              style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Adventure • Sci-Fi • 2014',
-              style: TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('Watch Now'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _movieList() {
-    return SizedBox(
-      height: 255,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        itemCount: movies.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, index) {
-          final movie = movies[index];
-
-          return MovieCard(
-            id: movie['id']!,
-            title: movie['title']!,
-            image: movie['image']!,
-            year: movie['year']!,
-            rating: double.parse(movie['rating']!),
-          );
-        },
       ),
     );
   }

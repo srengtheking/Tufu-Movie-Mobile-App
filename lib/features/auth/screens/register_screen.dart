@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import '../../../widgets/app_buttons.dart';
+import '../../../widgets/section_title.dart';
 import '../providers/auth_provider.dart';
-import '../../../core/theme/app_colors.dart';
+import '../validators.dart';
+import 'auth_scaffold.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -13,112 +16,135 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final nameController = TextEditingController();
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
 
-  Future<void> handleRegister() async {
+  bool _obscurePassword = true;
+  AutovalidateMode _autovalidate = AutovalidateMode.disabled;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
     final auth = context.read<AuthProvider>();
+    if (auth.isLoading) return;
+    if (!_formKey.currentState!.validate()) {
+      setState(() => _autovalidate = AutovalidateMode.onUserInteraction);
+      return;
+    }
+    FocusScope.of(context).unfocus();
 
-    final success = await auth.register(
-      nameController.text.trim(),
-      emailController.text.trim(),
-      passwordController.text,
+    final email = _emailController.text.trim();
+    final result = await auth.register(
+      _nameController.text.trim(),
+      email,
+      _passwordController.text,
     );
-
     if (!mounted) return;
 
-    if (success) {
+    // signedIn: the router guard moves us to Home.
+    if (result == RegisterResult.createdOnly) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registration successful. Please login.')),
+        const SnackBar(content: Text('Account created. Please sign in.')),
       );
-
-      context.go('/login');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(auth.errorMessage ?? 'Registration failed')),
+      context.go(
+        Uri(path: '/login', queryParameters: {'email': email}).toString(),
       );
     }
   }
 
-  @override
-  void dispose() {
-    nameController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
-    super.dispose();
+  void _toLogin() {
+    context.read<AuthProvider>().clearError();
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/login');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Create Account')),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
+    return AuthScaffold(
+      title: 'Create account',
+      children: [
+        Form(
+          key: _formKey,
+          autovalidateMode: _autovalidate,
+          onChanged: auth.clearError,
+          child: AutofillGroup(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Join Tufu-Movie',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                LabeledField(
+                  label: 'Name',
+                  hint: 'Your name',
+                  controller: _nameController,
+                  textInputAction: TextInputAction.next,
+                  textCapitalization: TextCapitalization.words,
+                  autofillHints: const [AutofillHints.name],
+                  validator: AuthValidators.name,
+                  onSubmitted: (_) => _emailFocus.requestFocus(),
                 ),
-                const SizedBox(height: 25),
-
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name',
-                    prefixIcon: Icon(Icons.person_outline),
-                  ),
-                ),
-                const SizedBox(height: 18),
-
-                TextField(
-                  controller: emailController,
+                const SizedBox(height: 20),
+                LabeledField(
+                  label: 'Email',
+                  hint: 'you@example.com',
+                  controller: _emailController,
+                  focusNode: _emailFocus,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined),
-                  ),
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.email],
+                  validator: AuthValidators.email,
+                  onSubmitted: (_) => _passwordFocus.requestFocus(),
                 ),
-                const SizedBox(height: 18),
-
-                TextField(
-                  controller: passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: Icon(Icons.lock_outline),
+                const SizedBox(height: 20),
+                LabeledField(
+                  label: 'Password',
+                  hint: 'At least 8 characters',
+                  controller: _passwordController,
+                  focusNode: _passwordFocus,
+                  obscure: _obscurePassword,
+                  textInputAction: TextInputAction.done,
+                  autofillHints: const [AutofillHints.newPassword],
+                  validator: AuthValidators.newPassword,
+                  onSubmitted: (_) => _submit(),
+                  suffix: PasswordVisibilityButton(
+                    obscured: _obscurePassword,
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
-                ),
-                const SizedBox(height: 25),
-
-                ElevatedButton(
-                  onPressed: auth.isLoading ? null : handleRegister,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.all(16),
-                  ),
-                  child: auth.isLoading
-                      ? const CircularProgressIndicator()
-                      : const Text('CREATE ACCOUNT'),
-                ),
-
-                TextButton(
-                  onPressed: () => context.go('/login'),
-                  child: const Text('Already have an account? Login'),
                 ),
               ],
             ),
           ),
         ),
-      ),
+        AuthErrorBanner(message: auth.errorMessage),
+        const SizedBox(height: 24),
+        PrimaryButton(
+          label: 'Create account',
+          loading: auth.isLoading,
+          onPressed: _submit,
+        ),
+        const SizedBox(height: 20),
+        AuthSwitchText(
+          prompt: 'Already have an account?',
+          action: 'Sign in',
+          onTap: _toLogin,
+        ),
+      ],
     );
   }
 }

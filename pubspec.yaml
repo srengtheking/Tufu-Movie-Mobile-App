@@ -41,6 +41,8 @@ dependencies:
   cached_network_image: ^4.0.6
   video_player: ^2.14.1
   intl: ^0.20.3
+  google_fonts: ^8.0.0
+  crypto: ^3.0.8
 
 dev_dependencies:
   flutter_test:
@@ -52,6 +54,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -65,7 +68,8 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/app-icon.png
+    - assets/icons/
+    - assets/images/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -97,3 +101,25 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# App icon for every platform. Regenerate with: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: "assets/icons/app-icon.png"
+  android: "ic_launcher"
+  min_sdk_android: 21
+  adaptive_icon_background: "#0A0A0A"
+  adaptive_icon_foreground: "assets/icons/app-icon.png"
+  ios: true
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: "assets/icons/app-icon.png"
+    background_color: "#0A0A0A"
+    theme_color: "#0A0A0A"
+  windows:
+    generate: true
+    image_path: "assets/icons/app-icon.png"
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: "assets/icons/app-icon.png"

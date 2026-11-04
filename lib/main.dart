@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tufu_movie/features/player/providers/player_provider.dart';
 
 import 'app.dart';
 import 'features/auth/providers/auth_provider.dart';
+import 'features/player/providers/player_provider.dart';
+import 'features/wallet/providers/wallet_provider.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  final auth = AuthProvider();
+
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider.value(value: auth),
         ChangeNotifierProvider(create: (_) => PlayerProvider()),
+        ChangeNotifierProvider(create: (_) => WalletProvider()),
       ],
-      child: const TufuMovieApp(),
+      child: TufuMovieApp(auth: auth),
     ),
   );
 }

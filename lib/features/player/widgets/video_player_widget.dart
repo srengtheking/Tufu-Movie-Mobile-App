@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../core/theme/app_colors.dart';
+
 class VideoPlayerWidget extends StatefulWidget {
   final String videoUrl;
 
@@ -11,7 +13,8 @@ class VideoPlayerWidget extends StatefulWidget {
 }
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
-  late VideoPlayerController controller;
+  late final VideoPlayerController controller =
+      VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
 
   bool isInitialized = false;
   String? errorMessage;
@@ -19,173 +22,162 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   @override
   void initState() {
     super.initState();
-    initializePlayer();
+    _initialize();
   }
 
-  Future<void> initializePlayer() async {
-    controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
-
+  Future<void> _initialize() async {
     try {
       await controller.initialize();
-
       if (!mounted) return;
-
-      setState(() {
-        isInitialized = true;
-      });
-
+      setState(() => isInitialized = true);
       await controller.play();
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
-
-      setState(() {
-        errorMessage = 'Unable to load video.';
-      });
+      setState(() => errorMessage = 'Unable to load video.');
     }
   }
 
   @override
   void dispose() {
-    if (isInitialized || errorMessage != null) {
-      controller.dispose();
-    } else {
-      controller.dispose();
-    }
+    controller.dispose();
     super.dispose();
   }
 
-  String formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
+  static String _format(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes % 60;
+    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return h > 0 ? '$h:${m.toString().padLeft(2, '0')}:$s' : '$m:$s';
+  }
 
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  void _seekBy(int seconds) {
+    final v = controller.value;
+    var target = v.position + Duration(seconds: seconds);
+    if (target < Duration.zero) target = Duration.zero;
+    if (target > v.duration) target = v.duration;
+    controller.seekTo(target);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (errorMessage != null) {
-      return AspectRatio(
-        aspectRatio: 16 / 9,
-        child: Container(
-          color: Colors.black,
-          alignment: Alignment.center,
-          child: Text(
-            errorMessage!,
-            style: const TextStyle(color: Colors.white),
-          ),
-        ),
-      );
-    }
+    final p = context.palette;
 
-    if (!isInitialized) {
-      return const AspectRatio(
-        aspectRatio: 16 / 9,
-        child: ColoredBox(
-          color: Colors.black,
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      );
-    }
-
-    return AspectRatio(
-      aspectRatio: controller.value.aspectRatio,
-      child: Stack(
-        alignment: Alignment.center,
+    return ColoredBox(
+      color: p.surface,
+      child: Column(
         children: [
-          VideoPlayer(controller),
-
-          ValueListenableBuilder<VideoPlayerValue>(
-            valueListenable: controller,
-            builder: (context, value, child) {
-              return Container(
-                color: Colors.black26,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      onPressed: () {
-                        controller.seekTo(
-                          value.position - const Duration(seconds: 10),
-                        );
-                      },
-                      icon: const Icon(
-                        Icons.replay_10,
-                        color: Colors.white,
-                        size: 35,
+          AspectRatio(
+            aspectRatio: isInitialized ? controller.value.aspectRatio : 16 / 9,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (isInitialized) VideoPlayer(controller),
+                if (errorMessage != null)
+                  Center(
+                    child: Text(
+                      errorMessage!,
+                      style: TextStyle(color: p.textSecondary),
+                    ),
+                  )
+                else if (!isInitialized)
+                  const Center(child: CircularProgressIndicator())
+                else
+                  ValueListenableBuilder<VideoPlayerValue>(
+                    valueListenable: controller,
+                    builder: (context, value, _) => ColoredBox(
+                      color: Colors.black26,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            tooltip: 'Back 10 seconds',
+                            onPressed: () => _seekBy(-10),
+                            icon: const Icon(
+                              Icons.replay_10_rounded,
+                              color: Colors.white,
+                              size: 34,
+                            ),
+                          ),
+                          const SizedBox(width: 28),
+                          Material(
+                            color: AppColors.primary,
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: value.isPlaying
+                                  ? controller.pause
+                                  : controller.play,
+                              child: SizedBox(
+                                width: 64,
+                                height: 64,
+                                child: Icon(
+                                  value.isPlaying
+                                      ? Icons.pause_rounded
+                                      : Icons.play_arrow_rounded,
+                                  color: Colors.white,
+                                  size: 36,
+                                  semanticLabel: value.isPlaying
+                                      ? 'Pause'
+                                      : 'Play',
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 28),
+                          IconButton(
+                            tooltip: 'Forward 10 seconds',
+                            onPressed: () => _seekBy(10),
+                            icon: const Icon(
+                              Icons.forward_10_rounded,
+                              color: Colors.white,
+                              size: 34,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-
-                    IconButton(
-                      onPressed: () {
-                        if (value.isPlaying) {
-                          controller.pause();
-                        } else {
-                          controller.play();
-                        }
-                      },
-                      icon: Icon(
-                        value.isPlaying
-                            ? Icons.pause_circle
-                            : Icons.play_circle,
-                        color: Colors.white,
-                        size: 55,
-                      ),
-                    ),
-
-                    IconButton(
-                      onPressed: () {
-                        controller.seekTo(
-                          value.position + const Duration(seconds: 10),
-                        );
-                      },
-                      icon: const Icon(
-                        Icons.forward_10,
-                        color: Colors.white,
-                        size: 35,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
+                  ),
+              ],
+            ),
           ),
-
-          Positioned(
-            left: 10,
-            right: 10,
-            bottom: 5,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: ValueListenableBuilder<VideoPlayerValue>(
               valueListenable: controller,
-              builder: (context, value, child) {
+              builder: (context, value, _) {
+                final timeStyle = TextStyle(
+                  color: p.textSecondary,
+                  fontSize: 12,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                );
                 return Column(
                   children: [
-                    VideoProgressIndicator(
-                      controller,
-                      allowScrubbing: true,
-                      colors: const VideoProgressColors(
-                        playedColor: Colors.red,
-                        bufferedColor: Colors.white38,
-                        backgroundColor: Colors.white24,
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: SizedBox(
+                        height: 5,
+                        child: isInitialized
+                            ? VideoProgressIndicator(
+                                controller,
+                                allowScrubbing: true,
+                                padding: EdgeInsets.zero,
+                                colors: VideoProgressColors(
+                                  playedColor: AppColors.brand,
+                                  bufferedColor: p.textMuted.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                  backgroundColor: p.button,
+                                ),
+                              )
+                            : ColoredBox(color: p.button),
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          formatDuration(value.position),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                          ),
-                        ),
-                        Text(
-                          formatDuration(value.duration),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                          ),
-                        ),
+                        Text(_format(value.position), style: timeStyle),
+                        Text(_format(value.duration), style: timeStyle),
                       ],
                     ),
                   ],
